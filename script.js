@@ -11,7 +11,7 @@ document.body.appendChild(renderer.domElement);
 document.body.appendChild(VRButton.createButton(renderer));
 
 // **Tambahkan pencahayaan agar objek terlihat di VR**
-const light = new THREE.HemisphereLight(0xffffff, 0x444444, 3);
+const light = new THREE.HemisphereLight(0xffffff, 0x000000, 4); 
 scene.add(light);
 
 // **Tambahkan lantai agar terasa tidak melayang di VR**
@@ -44,17 +44,35 @@ animate();
 // **Interaksi klik (ubah warna)**
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+const originalColors = new Map(); // Simpan warna asli setiap objek
 
 window.addEventListener('click', (event) => {
+    if (event.target !== renderer.domElement) {
+        return; // Abaikan klik di luar canvas
+    }
+
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
     
     const intersects = raycaster.intersectObjects(scene.children);
     if (intersects.length > 0) {
-        intersects[0].object.material.color.set(0xff0000);
+        const object = intersects[0].object;
+
+        // Jika objek belum tersimpan warnanya, simpan warna aslinya
+        if (!originalColors.has(object)) {
+            originalColors.set(object, object.material.color.getHex());
+        }
+
+        // Toggle warna: jika warna sudah berubah, kembalikan ke warna asli
+        if (object.material.color.getHex() === 0xff0000) {
+            object.material.color.set(originalColors.get(object)); // Kembali ke warna asli
+        } else {
+            object.material.color.set(0xff0000); // Ubah ke merah
+        }
     }
 });
+
 
 // **Interaksi drag untuk rotasi**
 let isDragging = false;

@@ -6,5 +6,5 @@
 
 #### Berikut adalah demonya, Klik gambar untuk redirect ke youtube:
 
-[![Tonton Video](https://github.com/user-attachments/assets/1fae4f0e-646d-4a70-abbf-75cabf0ceb53)](https://www.youtube.com/watch?v=VIDEO_ID)
+[![Tonton Video](https://github.com/user-attachments/assets/1fae4f0e-646d-4a70-abbf-75cabf0ceb53)](https://youtu.be/BYYIWjL34is)
 

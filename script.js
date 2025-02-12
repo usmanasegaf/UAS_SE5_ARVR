@@ -1,128 +1,114 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@latest/build/three.module.js';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@latest/examples/jsm/webxr/VRButton.js';
 
-// **Setup scene, camera, and renderer**
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.xr.enabled = true; // **Aktifkan XR untuk VR**
+renderer.setClearColor(0x000000);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
+renderer.xr.enabled = true;
 document.body.appendChild(VRButton.createButton(renderer));
 
-// **Tambahkan pencahayaan agar objek terlihat di VR**
-const light = new THREE.HemisphereLight(0xffffff, 0x000000, 4); 
-scene.add(light);
-
-// **Tambahkan lantai agar terasa tidak melayang di VR**
-const groundGeometry = new THREE.PlaneGeometry(30, 30);
-const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x888888, side: THREE.DoubleSide });
-const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-ground.rotation.x = -Math.PI / 2;
-scene.add(ground);
-
-// **Buat kubus**
-const geometry = new THREE.BoxGeometry();
-const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-const cube = new THREE.Mesh(geometry, material);
-cube.position.set(0, 1, -2);
-scene.add(cube);
-
-// **Atur posisi awal kamera (seperti tinggi manusia)**
-// **Buat anchor untuk kamera agar bisa diatur di VR**
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(4, 5, 11);
 const cameraGroup = new THREE.Group();
 cameraGroup.add(camera);
 scene.add(cameraGroup);
 
-// **Atur posisi awal kamera di luar VR**
-camera.position.set(0, 1.6, 0); // Set tinggi kamera seperti tinggi manusia
-cameraGroup.position.set(0, 0, 3); // Geser posisi awal pemain di VR
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.minDistance = 5;
+controls.maxDistance = 20;
+controls.minPolarAngle = 0.5;
+controls.maxPolarAngle = 1.5;
+controls.autoRotate = false;
+controls.target = new THREE.Vector3(0, 1, 0);
+controls.update();
 
-// **Event listener saat masuk ke VR**
-renderer.xr.addEventListener('sessionstart', () => {
-    cameraGroup.position.set(0, 0, 2); // Atur posisi kamera di VR
-});
+const groundGeometry = new THREE.PlaneGeometry(20, 20, 32, 32);
+groundGeometry.rotateX(-Math.PI / 2);
+const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x555555, side: THREE.DoubleSide });
+const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+groundMesh.receiveShadow = true;
+scene.add(groundMesh);
 
-// **Event listener saat keluar dari VR**
-renderer.xr.addEventListener('sessionend', () => {
-    cameraGroup.position.set(0, 0, 3); // Kembalikan posisi ke awal
-});
+const spotLight = new THREE.SpotLight(0xffffff, 3000, 100, 0.22, 1);
+spotLight.position.set(0, 25, 0);
+spotLight.castShadow = true;
+scene.add(spotLight);
 
-
-// **Animasi dengan VR**
-function animate() {
-    renderer.setAnimationLoop(() => {
-        cube.rotation.x += 0.01;
-        cube.rotation.y += 0.01;
-        renderer.render(scene, camera);
+const loader = new GLTFLoader().setPath('3dmodel/mf/');
+loader.load('scene.gltf', (gltf) => {
+    console.log('Model Loaded');
+    const mesh = gltf.scene;
+    mesh.traverse((child) => {
+        if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+        }
     });
-}
-animate();
+    mesh.position.set(0, 1.05, -1);
+    scene.add(mesh);
+    const progressContainer = document.getElementById('progress-container');
+    if (progressContainer) progressContainer.style.display = 'none';
+}, undefined, (error) => {
+    console.error(error);
+});
 
-// **Interaksi klik (ubah warna)**
+renderer.xr.addEventListener('sessionstart', () => {
+    cameraGroup.position.set(0, 0, 2);
+});
+renderer.xr.addEventListener('sessionend', () => {
+    cameraGroup.position.set(0, 0, 3);
+});
+
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
-const originalColors = new Map(); // Simpan warna asli setiap objek
+const originalColors = new Map();
 
 window.addEventListener('click', (event) => {
-    if (event.target !== renderer.domElement) {
-        return; // Abaikan klik di luar canvas
-    }
-
+    if (event.target !== renderer.domElement) return;
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
-    
     const intersects = raycaster.intersectObjects(scene.children);
     if (intersects.length > 0) {
         const object = intersects[0].object;
-
-        // Jika objek belum tersimpan warnanya, simpan warna aslinya
         if (!originalColors.has(object)) {
             originalColors.set(object, object.material.color.getHex());
         }
-
-        // Toggle warna: jika warna sudah berubah, kembalikan ke warna asli
-        if (object.material.color.getHex() === 0xff0000) {
-            object.material.color.set(originalColors.get(object)); // Kembali ke warna asli
-        } else {
-            object.material.color.set(0xff0000); // Ubah ke merah
-        }
+        object.material.color.set(
+            object.material.color.getHex() === 0xff0000 ? originalColors.get(object) : 0xff0000
+        );
     }
 });
 
-
-// **Interaksi drag untuk rotasi**
-let isDragging = false;
-let previousMousePosition = { x: 0, y: 0 };
-
-document.addEventListener("mousedown", (event) => {
-    isDragging = true;
-    previousMousePosition = { x: event.clientX, y: event.clientY };
-});
-
-document.addEventListener("mousemove", (event) => {
-    if (!isDragging) return;
-
-    let deltaMove = {
-        x: event.clientX - previousMousePosition.x,
-        y: event.clientY - previousMousePosition.y,
-    };
-
-    let rotationSpeed = 0.005;
-    cube.rotation.y += deltaMove.x * rotationSpeed;
-    cube.rotation.x += deltaMove.y * rotationSpeed;
-
-    previousMousePosition = { x: event.clientX, y: event.clientY };
-});
-
-document.addEventListener("mouseup", () => {
-    isDragging = false;
-});
-
-// **Resize window agar responsif**
-window.addEventListener("resize", () => {
+window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+let autoRotate = false;
+window.addEventListener('keydown', (event) => {
+    if (event.key === 'r') {
+        autoRotate = !autoRotate;
+        controls.autoRotate = autoRotate;
+    }
+});
+
+function animate() {
+    renderer.setAnimationLoop(() => {
+        controls.update();
+        renderer.render(scene, camera);
+    });
+}
+
+animate();

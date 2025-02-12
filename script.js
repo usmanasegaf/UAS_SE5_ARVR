@@ -63,11 +63,18 @@ loader.load('scene.gltf', (gltf) => {
 });
 
 renderer.xr.addEventListener('sessionstart', () => {
-    cameraGroup.position.set(0, 0, 2);
+    cameraGroup.position.set(0, 1, 8);
 });
 renderer.xr.addEventListener('sessionend', () => {
-    cameraGroup.position.set(0, 0, 3);
+    cameraGroup.position.set(0, 0, 0);
 });
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        renderer.xr.getSession().end();
+    }
+});
+
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();

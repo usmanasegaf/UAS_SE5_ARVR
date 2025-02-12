@@ -29,7 +29,25 @@ cube.position.set(0, 1, -2);
 scene.add(cube);
 
 // **Atur posisi awal kamera (seperti tinggi manusia)**
-camera.position.set(0, 1.6, 3);
+// **Buat anchor untuk kamera agar bisa diatur di VR**
+const cameraGroup = new THREE.Group();
+cameraGroup.add(camera);
+scene.add(cameraGroup);
+
+// **Atur posisi awal kamera di luar VR**
+camera.position.set(0, 1.6, 0); // Set tinggi kamera seperti tinggi manusia
+cameraGroup.position.set(0, 0, 3); // Geser posisi awal pemain di VR
+
+// **Event listener saat masuk ke VR**
+renderer.xr.addEventListener('sessionstart', () => {
+    cameraGroup.position.set(0, 0, 2); // Atur posisi kamera di VR
+});
+
+// **Event listener saat keluar dari VR**
+renderer.xr.addEventListener('sessionend', () => {
+    cameraGroup.position.set(0, 0, 3); // Kembalikan posisi ke awal
+});
+
 
 // **Animasi dengan VR**
 function animate() {
